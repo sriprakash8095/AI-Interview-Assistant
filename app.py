@@ -4,6 +4,9 @@ from groq import Groq
 from dotenv import load_dotenv
 import os
 import re
+import json
+from datetime import datetime
+import pandas as pd
 
 # ==========================
 # LOAD ENV VARIABLES
@@ -18,10 +21,25 @@ client = Groq(
 )
 
 # ==========================
+# INTERVIEW HISTORY FILE
+# ==========================
+
+HISTORY_FILE = "interview_history.json"
+
+if not os.path.exists(HISTORY_FILE):
+    with open(HISTORY_FILE, "w") as f:
+        json.dump([], f)
+
+# ==========================
 # UI
 # ==========================
 
-st.title("AI Interview Assistant")
+st.set_page_config(
+    page_title="AI Interview Assistant",
+    page_icon="🤖"
+)
+
+st.title("🤖 AI Interview Assistant")
 
 uploaded_file = st.file_uploader(
     "Upload Resume",
@@ -45,7 +63,7 @@ if uploaded_file:
             if text:
                 resume_text += text + "\n"
 
-    st.success("Resume Uploaded Successfully")
+    st.success("✅ Resume Uploaded Successfully")
 
     st.subheader("Resume Content")
 
@@ -62,13 +80,17 @@ if uploaded_file:
     if st.button("Generate Questions"):
 
         prompt = f"""
-        Based on the following resume,
-        generate exactly 5 interview questions.
+        Based on the following resume, generate exactly 5 interview questions.
+
+        Rules:
+        - Return ONLY questions.
+        - No introduction.
+        - No headings.
+        - No explanations.
+        - One question per line.
 
         Resume:
         {resume_text}
-
-        Return only questions.
         """
 
         response = client.chat.completions.create(
@@ -81,9 +103,20 @@ if uploaded_file:
             ]
         )
 
-        questions = response.choices[0].message.content
+        questions_text = response.choices[0].message.content
 
-        st.session_state["questions"] = questions.split("\n")
+        clean_questions = []
+
+        for line in questions_text.split("\n"):
+
+            line = line.strip()
+
+            if line == "":
+                continue
+
+            clean_questions.append(line)
+
+        st.session_state["questions"] = clean_questions
 
 # ==========================
 # DISPLAY QUESTIONS
@@ -95,27 +128,30 @@ if "questions" in st.session_state:
 
     answers = []
 
-    for i, q in enumerate(st.session_state["questions"]):
+    question_no = 1
 
-        if q.strip() == "":
-            continue
+    for q in st.session_state["questions"]:
+
+        st.write(f"### Question {question_no}")
 
         st.write(q)
 
         ans = st.text_area(
-            f"Answer {i+1}",
-            key=f"ans{i}"
+            f"Answer {question_no}",
+            key=f"ans{question_no}"
         )
 
         answers.append((q, ans))
 
+        question_no += 1
+
     # ==========================
-    # EVALUATION
+    # EVALUATE ANSWERS
     # ==========================
 
     if st.button("Evaluate Answers"):
 
-        st.subheader("Results")
+        st.subheader("Evaluation Results")
 
         scores = []
 
@@ -133,7 +169,7 @@ if "questions" in st.session_state:
 
             Evaluate this answer.
 
-            Return EXACTLY in this format:
+            Return EXACTLY in the format:
 
             Score: X
 
@@ -163,9 +199,11 @@ if "questions" in st.session_state:
                 )
 
             st.write("### Question")
+
             st.write(q)
 
             st.write("### Evaluation")
+
             st.write(result)
 
             st.divider()
@@ -176,18 +214,98 @@ if "questions" in st.session_state:
 
         if len(scores) > 0:
 
-            average_score = (
-                sum(scores) / len(scores)
-            )
+            average_score = sum(scores) / len(scores)
 
-            st.subheader(
-                "Overall Interview Score"
-            )
+            st.subheader("🏆 Overall Interview Score")
 
             st.success(
                 f"{average_score:.2f}/10"
             )
 
+            # ==========================
+            # SAVE HISTORY
+            # ==========================
+
+            with open(HISTORY_FILE, "r") as f:
+                history = json.load(f)
+
+            history.append(
+                {
+                    "date": datetime.now().strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
+                    "score": round(
+                        average_score,
+                        2
+                    )
+                }
+            )
+
+            with open(HISTORY_FILE, "w") as f:
+                json.dump(
+                    history,
+                    f,
+                    indent=4
+                )
+
         st.success(
-            "Interview Evaluation Completed"
+            "✅ Interview Evaluation Completed"
         )
+
+
+    # ==========================
+# DASHBOARD
+# ==========================
+
+st.subheader("📊 Dashboard")
+
+with open(HISTORY_FILE, "r") as f:
+    history = json.load(f)
+
+if len(history) == 0:
+
+    st.info("No interview history available.")
+
+else:
+
+    scores = [item["score"] for item in history]
+
+    total_interviews = len(scores)
+    best_score = max(scores)
+    average_score = sum(scores) / len(scores)
+    latest_score = scores[-1]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.metric(
+            "Total Interviews",
+            total_interviews
+        )
+
+        st.metric(
+            "Best Score",
+            f"{best_score}/10"
+        )
+
+    with col2:
+
+        st.metric(
+            "Average Score",
+            f"{average_score:.2f}/10"
+        )
+
+        st.metric(
+            "Latest Score",
+            f"{latest_score}/10"
+        )
+
+    st.subheader("📜 Interview History")
+
+    df = pd.DataFrame(history)
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
