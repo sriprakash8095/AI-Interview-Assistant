@@ -3,6 +3,7 @@ import pdfplumber
 from groq import Groq
 from dotenv import load_dotenv
 import os
+import re
 
 # ==========================
 # LOAD ENV VARIABLES
@@ -55,7 +56,7 @@ if uploaded_file:
     )
 
     # ==========================
-    # QUESTION GENERATION
+    # GENERATE QUESTIONS
     # ==========================
 
     if st.button("Generate Questions"):
@@ -116,6 +117,8 @@ if "questions" in st.session_state:
 
         st.subheader("Results")
 
+        scores = []
+
         for q, ans in answers:
 
             if ans.strip() == "":
@@ -130,9 +133,11 @@ if "questions" in st.session_state:
 
             Evaluate this answer.
 
-            Give:
-            1. Score out of 10
-            2. Feedback
+            Return EXACTLY in this format:
+
+            Score: X
+
+            Feedback: Your feedback here
             """
 
             response = client.chat.completions.create(
@@ -147,10 +152,42 @@ if "questions" in st.session_state:
 
             result = response.choices[0].message.content
 
+            match = re.search(
+                r"Score:\s*(\d+)",
+                result
+            )
+
+            if match:
+                scores.append(
+                    int(match.group(1))
+                )
+
             st.write("### Question")
             st.write(q)
 
             st.write("### Evaluation")
             st.write(result)
 
-        st.success("Interview Evaluation Completed")
+            st.divider()
+
+        # ==========================
+        # OVERALL SCORE
+        # ==========================
+
+        if len(scores) > 0:
+
+            average_score = (
+                sum(scores) / len(scores)
+            )
+
+            st.subheader(
+                "Overall Interview Score"
+            )
+
+            st.success(
+                f"{average_score:.2f}/10"
+            )
+
+        st.success(
+            "Interview Evaluation Completed"
+        )
