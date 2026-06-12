@@ -8,7 +8,91 @@ import re
 import subprocess
 from datetime import datetime
 import pandas as pd
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer
+)
 
+from reportlab.lib.styles import getSampleStyleSheet
+
+def generate_pdf_report(
+    average_score,
+    summary,
+    voice_answers
+):
+
+    pdf = SimpleDocTemplate(
+        "Interview_Report.pdf"
+    )
+
+    styles = getSampleStyleSheet()
+
+    content = []
+
+    content.append(
+        Paragraph(
+            "AI Interview Report",
+            styles["Title"]
+        )
+    )
+
+    content.append(
+        Spacer(1, 12)
+    )
+
+    content.append(
+        Paragraph(
+            f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            styles["Normal"]
+        )
+    )
+
+    content.append(
+        Paragraph(
+            f"Overall Score: {average_score:.2f}/10",
+            styles["Normal"]
+        )
+    )
+
+    content.append(
+        Spacer(1, 12)
+    )
+
+    content.append(
+        Paragraph(
+            summary.replace("\n", "<br/>"),
+            styles["BodyText"]
+        )
+    )
+
+    content.append(
+        Spacer(1, 12)
+    )
+
+    for item in voice_answers:
+
+        content.append(
+            Paragraph(
+                f"<b>Question:</b> {item['question']}",
+                styles["BodyText"]
+            )
+        )
+
+        content.append(
+            Paragraph(
+                f"<b>Answer:</b> {item['answer']}",
+                styles["BodyText"]
+            )
+        )
+
+        content.append(
+            Spacer(1, 10)
+        )
+
+    pdf.build(content)
+
+    return "Interview_Report.pdf"
 # ==========================
 # LOAD ENV VARIABLES
 # ==========================
@@ -370,6 +454,23 @@ if len(voice_answers) > 0:
         )
 
         st.write(summary)
+        pdf_file = generate_pdf_report(
+            average_score,
+            summary,
+            voice_answers
+        )
+
+        with open(
+            pdf_file,
+            "rb"
+        ) as file:
+
+            st.download_button(
+                label="📄 Download Interview Report",
+                data=file,
+                file_name="Interview_Report.pdf",
+                mime="application/pdf"
+            )
 
         # ==========================
         # SAVE HISTORY
@@ -400,6 +501,7 @@ if len(voice_answers) > 0:
         st.success(
             "✅ Evaluation Saved"
         )
+       
 # ==========================
 # DASHBOARD
 # ==========================
