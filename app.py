@@ -7,7 +7,9 @@ import re
 import json
 from datetime import datetime
 import pandas as pd
-
+import speech_recognition as sr
+import pyttsx3
+import subprocess
 # ==========================
 # LOAD ENV VARIABLES
 # ==========================
@@ -19,6 +21,34 @@ API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(
     api_key=API_KEY
 )
+def speak(text):
+
+    engine = pyttsx3.init()
+
+    engine.say(text)
+
+    engine.runAndWait()
+
+
+def listen():
+
+    r = sr.Recognizer()
+
+    with sr.Microphone() as source:
+
+        st.info("🎤 Listening...")
+
+        audio = r.listen(source)
+
+    try:
+
+        text = r.recognize_google(audio)
+
+        return text
+
+    except:
+
+        return "Could not understand"
 
 # ==========================
 # INTERVIEW HISTORY FILE
@@ -116,12 +146,14 @@ if uploaded_file:
 
             clean_questions.append(line)
 
+# Save only after ALL questions are collected
+
         st.session_state["questions"] = clean_questions
 
-# ==========================
-# DISPLAY QUESTIONS
-# ==========================
+        with open("questions.json", "w") as f:
+            json.dump(clean_questions, f, indent=4)
 
+        st.success("Questions saved successfully")
 if "questions" in st.session_state:
 
     st.subheader("Interview Questions")
@@ -136,14 +168,44 @@ if "questions" in st.session_state:
 
         st.write(q)
 
+        if st.button(
+            f"🔊 Speak Question {question_no}",
+            key=f"speak{question_no}"
+        ):
+            speak(q)
+
         ans = st.text_area(
             f"Answer {question_no}",
             key=f"ans{question_no}"
         )
 
+        if st.button(
+            f"🎤 Record Answer {question_no}",
+            key=f"record{question_no}"
+        ):
+
+            voice_text = listen()
+
+            st.success(
+                f"You said: {voice_text}"
+            )
+
         answers.append((q, ans))
 
         question_no += 1
+        # ==========================
+# VOICE INTERVIEW
+# ==========================
+
+if st.button("🎤 Start Voice Interview"):
+
+    subprocess.run(
+        ["python", "voice_interview.py"]
+    )
+
+    st.success(
+        "Voice Interview Completed!"
+    )
 
     # ==========================
     # EVALUATE ANSWERS
@@ -155,6 +217,7 @@ if "questions" in st.session_state:
 
         scores = []
 
+        # rest of your evaluation code...
         for q, ans in answers:
 
             if ans.strip() == "":
