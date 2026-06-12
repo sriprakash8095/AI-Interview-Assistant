@@ -15,6 +15,7 @@ from reportlab.platypus import (
 )
 
 from reportlab.lib.styles import getSampleStyleSheet
+import matplotlib.pyplot as plt
 
 def generate_pdf_report(
     average_score,
@@ -125,9 +126,81 @@ st.set_page_config(
 )
 
 st.title("🤖 AI Interview Assistant")
+interview_type = st.selectbox(
+    "🎯 Select Interview Type",
+    [
+        "Resume Based",
+        "HR",
+        "Python",
+        "Java",
+        "Machine Learning",
+        "IoT"
+    ]
+)
+difficulty = st.selectbox(
+    "📚 Difficulty Level",
+    [
+        "Easy",
+        "Medium",
+        "Hard"
+    ]
+)
+if interview_type != "Resume Based":
+
+    if st.button("Generate Questions"):
+
+        prompt = f"""
+Generate exactly 5
+{interview_type}
+interview questions.
+
+Difficulty Level: {difficulty}
+
+Candidate Level: Fresher
+
+Rules:
+- Return only questions
+- One question per line
+- No numbering
+- No headings
+"""
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        questions_text = response.choices[0].message.content
+
+        clean_questions = []
+
+        for line in questions_text.split("\n"):
+
+            line = line.strip()
+
+            if line:
+
+                clean_questions.append(line)
+
+        st.session_state["questions"] = clean_questions
+
+        with open("questions.json", "w") as f:
+
+            json.dump(
+                clean_questions,
+                f,
+                indent=4
+            )
+         
 if "interview_completed" not in st.session_state:
     st.session_state["interview_completed"] = False
 if st.button("🗑 Clear Previous Interview"):
+    st.session_state["interview_completed"] = False
 
     if os.path.exists("questions.json"):
         os.remove("questions.json")
@@ -143,16 +216,23 @@ if st.button("🗑 Clear Previous Interview"):
 # RESUME UPLOAD
 # ==========================
 
-uploaded_file = st.file_uploader(
-    "Upload Resume",
-    type=["pdf"]
-)
+uploaded_file = None
+
+if interview_type == "Resume Based":
+
+    uploaded_file = st.file_uploader(
+        "Upload Resume",
+        type=["pdf"]
+    )
 
 # ==========================
 # PROCESS RESUME
 # ==========================
 
-if uploaded_file:
+if (
+    interview_type == "Resume Based"
+    and uploaded_file
+):
 
     resume_text = ""
 
@@ -179,22 +259,45 @@ if uploaded_file:
     # ==========================
     # GENERATE QUESTIONS
     # ==========================
-
+    st.info(
+    f"Selected Mode: {interview_type}"
+)
+    st.info(
+    f"Difficulty: {difficulty}"
+)
     if st.button("Generate Questions"):
 
-        prompt = f"""
-        Based on the following resume,
-        generate exactly 5 interview questions.
+        if interview_type == "Resume Based":
 
-        Rules:
-        - Return only questions
-        - One question per line
-        - No numbering
-        - No headings
+            prompt = f"""
+            Based on the following resume,
+generate exactly 5 interview questions.
 
-        Resume:
-        {resume_text}
-        """
+Difficulty Level: {difficulty}
+
+Rules:
+- Return only questions
+- One question per line
+- No numbering
+- No headings
+
+Resume:
+{resume_text}
+            """
+
+        else:
+
+            prompt = f"""
+    Generate exactly 5 {interview_type}
+    interview questions suitable for
+    a fresher candidate.
+
+    Rules:
+    - Return only questions
+    - One question per line
+    - No numbering
+    - No headings
+    """
 
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -323,11 +426,17 @@ if (
 # EVALUATE INTERVIEW
 # ==========================
 
-if len(voice_answers) > 0:
+if (
+    len(voice_answers) > 0
+    and st.session_state.get(
+        "interview_completed",
+        False
+    )
+):
 
     if st.button(
-        "🤖 Evaluate Voice Interview"
-    ):
+    "📊 Generate Interview Report"
+):
 
         st.subheader(
             "Interview Evaluation"
@@ -338,20 +447,24 @@ if len(voice_answers) > 0:
         for item in voice_answers:
 
             eval_prompt = f"""
-            Question:
-            {item['question']}
+Question:
+{item['question']}
 
-            Answer:
-            {item['answer']}
+Answer:
+{item['answer']}
 
-            Evaluate the answer.
+Evaluate this answer on a scale of 0 to 10.
 
-            Return EXACTLY:
+Rules:
+- Give only an integer score.
+- Score must be between 0 and 10.
 
-            Score: X
+Return EXACTLY in this format:
 
-            Feedback: feedback text
-            """
+Score: 8
+
+Feedback: Good answer with clear explanation.
+"""
 
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
@@ -376,10 +489,9 @@ if len(voice_answers) > 0:
             st.divider()
 
             match = re.search(
-                r"Score:\s*(\d+)",
-                result
-            )
-
+    r"Score:\s*([0-9]+)",
+    result
+)
             if match:
 
                 scores.append(
@@ -404,6 +516,7 @@ if len(voice_answers) > 0:
         st.success(
             f"{average_score:.2f}/10"
         )
+        st.info(f"Type :{interview_type}| Difficulty: {difficulty}")
 
         # ==========================
         # AI FEEDBACK SUMMARY
@@ -478,18 +591,23 @@ if len(voice_answers) > 0:
 
         with open(HISTORY_FILE, "r") as f:
             history = json.load(f)
+        
+        st.write("Scores:", scores)
+        st.write("Average Score:", average_score)
 
         history.append(
-            {
-                "date": datetime.now().strftime(
-                    "%Y-%m-%d %H:%M"
-                ),
-                "score": round(
-                    average_score,
-                    2
-                )
-            }
-        )
+    {
+        "date": datetime.now().strftime(
+            "%Y-%m-%d %H:%M"
+        ),
+        "score": round(
+            average_score,
+            2
+        ),
+        "type": interview_type,
+        "difficulty": difficulty
+    }
+)
 
         with open(HISTORY_FILE, "w") as f:
             json.dump(
@@ -524,6 +642,27 @@ else:
         item["score"]
         for item in history
     ]
+    st.subheader("📈 Performance Trend")
+
+    fig, ax = plt.subplots()
+
+    ax.plot(
+    range(1, len(scores) + 1),
+    scores,
+    marker="o",
+    linewidth=2
+)
+
+    ax.set_ylim(0, 10)
+
+    ax.grid(True)
+    ax.set_ylim(0, 10)
+
+    ax.set_xlabel("Interview Number")
+    ax.set_ylabel("Score")
+    ax.set_title("Interview Performance Trend")
+
+    st.pyplot(fig)
 
     total_interviews = len(scores)
 
@@ -568,7 +707,20 @@ else:
 
     df = pd.DataFrame(history)
 
+if "type" not in df.columns:
+    df["type"] = "Unknown"
+
+if "difficulty" not in df.columns:
+    df["difficulty"] = "Unknown"
+
     st.dataframe(
-        df,
-        use_container_width=True
-    )
+    df[
+        [
+            "date",
+            "type",
+            "difficulty",
+            "score"
+        ]
+    ],
+    use_container_width=True
+)
