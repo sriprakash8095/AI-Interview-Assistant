@@ -255,6 +255,50 @@ if (
         resume_text,
         height=250
     )
+    resume_score_prompt = f"""
+Analyze this resume and give:
+
+1. Resume Score out of 100
+2. Strengths
+3. Weaknesses
+4. Suggestions
+
+Resume:
+
+{resume_text}
+
+Return EXACTLY:
+
+Resume Score: 85
+
+Strengths:
+- ...
+
+Weaknesses:
+- ...
+
+Suggestions:
+- ...
+"""
+    resume_response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+        {
+            "role": "user",
+            "content": resume_score_prompt
+        }
+    ]
+)
+
+    resume_analysis = (
+                    resume_response
+                    .choices[0]
+                    .message.content
+                )
+
+    st.subheader("📄 Resume Analysis")
+
+    st.write(resume_analysis)
 
     # ==========================
     # GENERATE QUESTIONS
@@ -447,25 +491,30 @@ if (
         for item in voice_answers:
 
             eval_prompt = f"""
-Question:
+Main Question:
 {item['question']}
 
-Answer:
+Main Answer:
 {item['answer']}
 
-Evaluate this answer on a scale of 0 to 10.
+Follow-up Question:
+{item.get('followup_question', 'N/A')}
 
-Rules:
-- Give only an integer score.
-- Score must be between 0 and 10.
+Follow-up Answer:
+{item.get('followup_answer', 'N/A')}
 
-Return EXACTLY in this format:
+Evaluate the candidate's overall response considering BOTH:
+1. Main answer
+2. Follow-up answer
+
+Give a score between 0 and 10.
+
+Return EXACTLY:
 
 Score: 8
 
-Feedback: Good answer with clear explanation.
+Feedback: Good answer with relevant details and strong follow-up response.
 """
-
             response = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[
@@ -485,7 +534,14 @@ Feedback: Good answer with clear explanation.
             st.write(
                 result
             )
+            st.write("### 🤖 Follow-up Question")
 
+            st.info(
+            item.get(
+            "followup_question",
+            "No follow-up available"
+            )
+        )
             st.divider()
 
             match = re.search(
@@ -502,21 +558,34 @@ Feedback: Good answer with clear explanation.
         # OVERALL SCORE
         # ==========================
 
-            if len(scores) > 0:
+        if len(scores) > 0:
 
-                average_score = (
+            average_score = (
                 sum(scores)
                 / len(scores)
             )
 
-        st.subheader(
-            "🏆 Overall Score"
-        )
+            st.subheader(
+                "🏆 Overall Score"
+            )
 
-        st.success(
-            f"{average_score:.2f}/10"
-        )
-        st.info(f"Type :{interview_type}| Difficulty: {difficulty}")
+            st.success(
+                f"{average_score:.2f}/10"
+            )
+            readiness = average_score * 10
+
+            st.subheader(
+            "🚀 Interview Readiness"
+            )
+
+            st.progress(
+                int(readiness)
+            )
+
+            st.success(
+                f"{readiness:.0f}% Ready"
+            )
+            st.info(f"Type :{interview_type}| Difficulty: {difficulty}")
 
         # ==========================
         # AI FEEDBACK SUMMARY
@@ -527,12 +596,12 @@ Feedback: Good answer with clear explanation.
 
         Overall Score: {average_score:.2f}/10
 
-        Give:
+        Provide:
 
-        1. Strengths
-        2. Weaknesses
-        3. Suggestions for Improvement
-
+1. Strengths
+2. Weak Areas
+3. Suggestions
+4. Recommended Topics To Learn
         Keep it concise.
 
         Format:

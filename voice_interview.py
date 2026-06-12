@@ -5,7 +5,13 @@ import pygame
 import speech_recognition as sr
 import uuid
 import os
+from groq import Groq
+from dotenv import load_dotenv
+load_dotenv()
 
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
 # ==========================
 # LOAD QUESTIONS
 # ==========================
@@ -46,7 +52,39 @@ async def speak(text):
     pygame.mixer.music.unload()
 
     os.remove(filename)
+def generate_followup(question, answer):
+        prompt = f"""
+You are an experienced technical interviewer.
 
+Original Question:
+{question}
+
+Candidate Answer:
+{answer}
+
+Ask ONE short and specific follow-up question.
+
+Rules:
+- Maximum 20 words
+- Directly related to the answer
+- Sound like a real interviewer
+- Ask only one question
+
+Return ONLY the question.
+"""
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        followup=response.choices[0].message.content
+        return followup
 # ==========================
 # LISTEN FUNCTION
 # ==========================
@@ -117,12 +155,27 @@ async def run_interview():
 
         answer = listen()
 
+# Generate follow-up
+        followup = generate_followup(
+        q,
+        answer
+     )
+
+        print("\nFollow-up Question:")
+        print(followup)
+
+        await speak(followup)
+
+        followup_answer = listen()
+
         answers.append(
-    {
-        "question": q,
-        "answer": answer
-    }
-)
+            {
+                "question": q,
+                "answer": answer,
+                "followup_question": followup,
+                "followup_answer": followup_answer
+            }
+        )
 
     # Save answers
 
