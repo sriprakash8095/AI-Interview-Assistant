@@ -115,6 +115,16 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, "w") as f:
 
         json.dump([], f)
+# ==========================
+# Feedback FILE
+# ==========================
+FEEDBACK_FILE = "feedback.json"
+
+if not os.path.exists(FEEDBACK_FILE):
+
+    with open(FEEDBACK_FILE, "w") as f:
+
+        json.dump([], f)
 
 # ==========================
 # PAGE CONFIG
@@ -918,3 +928,41 @@ st.dataframe(
     ],
     use_container_width=True
 )
+st.subheader("💡 User Feedback")
+
+rating = st.slider(
+    "⭐ Rate this platform",
+    1,
+    5,
+    5
+)
+
+feedback = st.text_area(
+    "Suggest improvements or report issues"
+)
+
+if st.button("Submit Feedback"):
+
+    with open(FEEDBACK_FILE, "r") as f:
+        feedback_data = json.load(f)
+
+    feedback_data.append(
+        {
+            "date": datetime.now().strftime(
+                "%Y-%m-%d %H:%M"
+            ),
+            "rating": rating,
+            "feedback": feedback
+        }
+    )
+
+    with open(FEEDBACK_FILE, "w") as f:
+        json.dump(
+            feedback_data,
+            f,
+            indent=4
+        )
+
+    st.success(
+        "✅ Feedback Submitted Successfully"
+    )
