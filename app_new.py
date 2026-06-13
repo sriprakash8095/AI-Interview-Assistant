@@ -145,12 +145,23 @@ difficulty = st.selectbox(
         "Hard"
     ]
 )
+if difficulty == "Easy":
+
+    question_count = 5
+
+elif difficulty == "Medium":
+
+    question_count = 7
+
+else:
+
+    question_count = 8
 if interview_type != "Resume Based":
 
     if st.button("Generate Questions"):
 
         prompt = f"""
-Generate exactly 5
+Generate exactly {question_count}
 {interview_type}
 interview questions.
 
@@ -281,19 +292,6 @@ return ONLY in the following format:
 
 For a fresher resume:
 
-90+ = Exceptional
-80-89 = Strong
-70-79 = Good
-60-69 = Average
-Below 60 = Needs Improvement
-
-Do not give 90+ unless the resume contains:
-- GitHub
-- LinkedIn
-- Internship
-- Achievements
-- Strong projects
-For fresher resumes:
 
 90-100 = Exceptional
 (Must have GitHub, LinkedIn, Internship, Achievements)
@@ -385,7 +383,7 @@ Document:
 
             prompt = f"""
             Based on the following resume,
-generate exactly 5 interview questions.
+generate exactly {question_count} interview questions.
 
 Difficulty Level: {difficulty}
 
@@ -402,7 +400,7 @@ Resume:
         else:
 
             prompt = f"""
-    Generate exactly 5 {interview_type}
+    Generate exactly {question_count} {interview_type}
     interview questions suitable for
     a fresher candidate.
 
@@ -880,14 +878,33 @@ else:
     )
 
     df = pd.DataFrame(history)
+    if "type" not in df.columns:
+        df["type"] = "Unknown"
 
-if "type" not in df.columns:
-    df["type"] = "Unknown"
+    if "difficulty" not in df.columns:
+        df["difficulty"] = "Unknown"
+    selected_type = st.selectbox(
+    "🎯 Filter Interview Type",
+    ["All"] + list(df["type"].unique())
+)
 
-if "difficulty" not in df.columns:
-    df["difficulty"] = "Unknown"
+    if selected_type != "All":
 
-    st.dataframe(
+        df = df[
+        df["type"] == selected_type
+    ]
+    selected_difficulty = st.selectbox(
+    "📚 Filter Difficulty",
+    ["All"] + list(df["difficulty"].unique())
+)
+
+    if selected_difficulty != "All":
+
+        df = df[
+        df["difficulty"] == selected_difficulty
+    ]
+
+st.dataframe(
     df[
         [
             "date",
