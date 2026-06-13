@@ -878,6 +878,9 @@ else:
     )
 
     df = pd.DataFrame(history)
+    df["type"] = df["type"].fillna("Unknown")
+
+    df["difficulty"] = df["difficulty"].fillna("Unknown")
     if "type" not in df.columns:
         df["type"] = "Unknown"
 
