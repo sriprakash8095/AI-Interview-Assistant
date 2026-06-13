@@ -928,41 +928,55 @@ st.dataframe(
     ],
     use_container_width=True
 )
+# ==========================
+# USER FEEDBACK
+# ==========================
+
+# ==========================
+# USER FEEDBACK
+# ==========================
+
 st.subheader("💡 User Feedback")
 
-rating = st.slider(
-    "⭐ Rate this platform",
-    1,
-    5,
-    5
-)
+with st.form("feedback_form", clear_on_submit=True):
 
-feedback = st.text_area(
-    "Suggest improvements or report issues"
-)
-
-if st.button("Submit Feedback"):
-
-    with open(FEEDBACK_FILE, "r") as f:
-        feedback_data = json.load(f)
-
-    feedback_data.append(
-        {
-            "date": datetime.now().strftime(
-                "%Y-%m-%d %H:%M"
-            ),
-            "rating": rating,
-            "feedback": feedback
-        }
+    rating = st.slider(
+        "⭐ Rate this platform",
+        1,
+        5,
+        5
     )
 
-    with open(FEEDBACK_FILE, "w") as f:
-        json.dump(
-            feedback_data,
-            f,
-            indent=4
+    feedback = st.text_area(
+        "Suggest improvements or report issues"
+    )
+
+    submitted = st.form_submit_button(
+        "Submit Feedback"
+    )
+
+    if submitted:
+
+        with open(FEEDBACK_FILE, "r") as f:
+            feedback_data = json.load(f)
+
+        feedback_data.append(
+            {
+                "date": datetime.now().strftime(
+                    "%Y-%m-%d %H:%M"
+                ),
+                "rating": rating,
+                "feedback": feedback
+            }
         )
 
-    st.success(
-        "✅ Feedback Submitted Successfully"
-    )
+        with open(FEEDBACK_FILE, "w") as f:
+            json.dump(
+                feedback_data,
+                f,
+                indent=4
+            )
+
+        st.success(
+            "✅ Feedback Submitted Successfully"
+        )
