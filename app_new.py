@@ -266,6 +266,15 @@ if (
             if text:
 
                 resume_text += text + "\n"
+    if (
+    "last_resume_text" not in st.session_state
+    or st.session_state["last_resume_text"] != resume_text 
+    ):
+
+        st.session_state["last_resume_text"] = resume_text
+
+        if "resume_analysis" in st.session_state:
+            del st.session_state["resume_analysis"]
 
     st.success("✅ Resume Uploaded Successfully")
 
@@ -286,86 +295,123 @@ You are an ATS resume checker.
 First determine whether this document is a professional resume.
 
 A resume must contain:
-- Candidate name
-- Education
-- Skills
-- Contact information
+
+* Candidate name
+* Education
+* Skills
+* Contact information
 
 If this document is NOT a resume,
 return ONLY:
 
 NOT A RESUME
 
-If this document IS a resume,
-return ONLY in the following format:
+If the document IS a valid resume:
 
+Do NOT mention resume validation.
 
-For a fresher resume:
+Do NOT say:
 
+* This is a resume
+* I classify this as a resume
+* The document appears to be a resume
+* Based on the document
+* I have evaluated the resume
+
+Evaluate strictly based on:
+
+* Education
+* Technical Skills
+* Projects
+* Certifications
+* Internship Experience
+* Achievements
+* LinkedIn Profile
+* GitHub Profile
+* Resume Structure
+
+Scoring Guidelines:
 
 90-100 = Exceptional
-(Must have GitHub, LinkedIn, Internship, Achievements)
+(Strong projects, GitHub, LinkedIn, internships, achievements)
 
 80-89 = Strong
-(Most sections present)
+(Good projects and skills, but missing one or two important sections)
 
 70-79 = Good
-(Some sections missing)
+(Multiple important sections missing)
 
 60-69 = Average
-(Multiple sections missing)
+(Significant gaps in profile)
 
-Below 60 = Weak
+Below 60 = Needs Improvement
 
+Important Rules:
 
+* Do NOT consider candidate name as a strength.
+* Do NOT consider email as a strength.
+* Do NOT consider phone number as a strength.
+* Do NOT consider address as a strength.
+* Do NOT consider contact information as a strength.
+* Contact details are mandatory resume requirements and should never increase the ATS score.
+* Focus only on professional qualifications and career readiness.
+* Be strict while scoring.
+* Do not assume skills, experience, internships, achievements or certifications that are not explicitly mentioned.
+* If GitHub, LinkedIn, Internship and Achievements are all missing, ATS Score must NOT exceed 75.
+Strength Rules:
+
+- Do NOT consider spoken languages as strengths.
+- Do NOT consider contact information as strengths.
+- Do NOT consider basic resume sections as strengths.
+- Prioritize projects, technical skills, certifications, internships, achievements and academic performance.
+
+Return ONLY in this format:
 
 ATS Score: X/100
 
 Strengths:
-- Point 1
-- Point 2
+
+* Point 1
+* Point 2
+* Point 3
 
 Missing Sections:
-- Point 1
-- Point 2
+
+* Point 1
+* Point 2
+* Point 3
 
 Suggestions:
-- Point 1
-- Point 2
 
-Important:
-- Do not explain your reasoning.
-- Do not say "I need to check".
-- Do not add extra text.
-- Be strict while scoring.
-- Deduct marks for missing GitHub, LinkedIn, internship experience, achievements, and poor project descriptions.
--do not add any extra text or explanations.
-Do NOT include scoring rules in the output.
-Do NOT explain the calculation.
-Only return the final ATS Score and analysis.
-
+* Point 1
+* Point 2
+* Point 3
 
 Document:
 
 {resume_text}
 """
-    resume_response = client.chat.completions.create(
-    model="llama-3.1-8b-instant",
-        messages=[
-        {
-            "role": "user",
-            "content": resume_score_prompt
-        }
-    ]
-)
-    
 
-    resume_analysis = (
-    resume_response
-    .choices[0]
-    .message.content
-    .strip()
-)
+    if "resume_analysis" not in st.session_state:
+
+        resume_response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+            {
+                "role": "user",
+                "content": resume_score_prompt
+            }
+        ]
+    )
+
+        st.session_state["resume_analysis"] = (
+            resume_response
+            .choices[0]
+            .message.content
+            .strip()
+        )
+
+    resume_analysis = st.session_state["resume_analysis"]
 
     if "NOT A RESUME" in resume_analysis:
 
@@ -378,6 +424,293 @@ Document:
     st.subheader("📄 Resume Analysis")
 
     st.write(resume_analysis)
+    
+
+    # ==========================
+# ROLE MATCH ANALYSIS
+# ==========================
+
+selected_role = st.selectbox(
+    "🎯 Target Job Role",
+    [
+        "Software Developer",
+        "Python Developer",
+        "Java Developer",
+        "Data Analyst",
+        "AI Engineer",
+        "Frontend Developer",
+        "Full Stack Developer"
+    ]
+)
+
+if st.button("Check Role Match"):
+
+    role_match_prompt = f"""
+You are an experienced technical recruiter.
+
+Analyze this resume ONLY for the role:
+
+{selected_role}
+
+Important Rules:
+Do not write:
+- implied
+- inferred
+- likely
+- may indicate
+- appears to
+- suggests
+- probably
+
+Use only verifiable information from the resume.
+
+* Evaluate ONLY skills, projects, certifications, technologies and experience relevant to the selected role.
+* Do NOT increase the score because of unrelated skills.
+* Do NOT assume any skills, experience or technologies that are not explicitly mentioned in the resume.
+* Missing important role-specific skills should reduce the score.
+* Strengths must be relevant to the selected role.
+Do NOT consider spoken languages as strengths for technical roles.
+Project Evaluation Rules:
+
+- Classify projects only based on technologies explicitly mentioned.
+- Do NOT assume a project is Full Stack, AI, Machine Learning, Frontend, Backend, Data Analytics, or Cloud based.
+- If a project uses sensors, microcontrollers, embedded systems, or wireless communication, classify it as an IoT/Embedded project.
+- If a project type is unclear, describe it generically as a technical project.
+- Never infer technologies that are not explicitly stated.
+Evidence-Based Evaluation Rules:
+
+
+- Evaluate ONLY based on information explicitly mentioned in the resume.
+- Do NOT infer technologies, frameworks, skills, or experience.
+- Do NOT assume project complexity.
+- Do NOT assume a project uses AI, Machine Learning, Deep Learning, NLP, Computer Vision, TensorFlow, PyTorch, APIs, Databases, Cloud, Frontend, Backend, OOP, or Data Structures unless explicitly mentioned.
+- If a skill is not explicitly stated, treat it as missing.
+- If a project description does not mention a technology, do not assume it was used.
+- Give credit only for clearly documented skills, technologies, certifications, and project work.
+A strength must directly improve the candidate's suitability for the selected role.
+
+If a skill or project is unrelated to the selected role, do not include it in Strengths.
+
+Example:
+For Full Stack Developer roles, IoT projects, sensors, microcontrollers and embedded systems should not be listed as strengths unless they involve frontend, backend, database or API development.
+Role Relevance Rules:
+
+- Strengths must come ONLY from skills directly relevant to the selected role.
+- Ignore unrelated skills while generating strengths.
+- Unrelated skills may be mentioned in the resume but must not appear in Strengths.
+
+Examples:
+
+AI Engineer:
+Relevant -> Python, Machine Learning, Deep Learning, TensorFlow, PyTorch, NLP, Computer Vision
+Ignore -> Java, C, SQL, HTML, CSS
+
+Frontend Developer:
+Relevant -> HTML, CSS, JavaScript, React, Angular, Vue
+Ignore -> Machine Learning, Deep Learning, IoT
+
+Data Analyst:
+Relevant -> SQL, Excel, Power BI, Tableau, Pandas, Data Visualization
+Ignore -> IoT, Embedded Systems, Sensors
+
+Java Developer:
+Relevant -> Java, OOP, Collections, JDBC, Spring, Hibernate
+Ignore -> Deep Learning, NLP, Computer Vision
+
+Python Developer:
+Relevant -> Python, APIs, Libraries, Python Projects
+Ignore -> HTML, CSS unless directly related to projects
+
+Evidence Verification Rules:
+
+- Every strength must be directly supported by information explicitly present in the resume.
+- Never connect a skill to a project unless the project description explicitly mentions that skill.
+- Never assume a programming language was used in a project unless explicitly stated.
+- If evidence is missing, do not mention it.
+- Do not infer problem-solving ability from project completion alone.
+- Mention problem-solving as a strength only if the resume explicitly describes challenges, solutions, optimization, debugging, achievements, or measurable outcomes.
+- Completing a project alone is not evidence of problem-solving ability.
+
+Role-Relevance Verification Rules:
+
+- A project can be considered a strength only if the technologies used in the project directly match the selected role.
+- Do not claim a project demonstrates frontend, backend, database, API, AI, ML, cloud, or full stack skills unless those technologies are explicitly mentioned.
+- Never convert an IoT, embedded, hardware, or sensor-based project into a software, AI, frontend, backend, or full stack project.
+- Describe projects exactly as documented in the resume.
+
+Strength Rules:
+
+* Mention only the top 3 strengths.
+* Do NOT mention basic familiarity or beginner-level knowledge as strengths.
+* Do NOT mention candidate name, education alone, email, phone number or contact information as strengths.
+* Prefer projects, technical skills, certifications and problem-solving ability.
+Only mention strengths directly supported by explicit resume evidence.
+
+Do not infer:
+- Leadership
+- Teamwork
+- Problem-solving
+- Communication
+- Analytical ability
+
+unless explicitly mentioned or demonstrated with evidence.
+
+Scoring Guide:
+
+90-100 = Strongly qualified
+75-89 = Good match
+60-74 = Partial match
+40-59 = Weak match
+Below 40 = Poor match
+
+Role Evaluation Criteria:
+
+Software Developer:
+
+* Programming Fundamentals
+* Data Structures
+* OOP Concepts
+* Academic Projects
+* Problem Solving
+
+For Software Developer roles, do not heavily penalize missing advanced industry skills such as:
+
+* System Design
+* Cloud Computing
+* DevOps
+* Microservices
+
+Python Developer:
+
+* Python
+* OOP
+* Python Projects
+* APIs
+* Python Libraries
+* Problem Solving
+
+Java Developer:
+
+* Java
+* OOP
+* Collections
+* JDBC
+* Spring
+* Hibernate
+* Java Projects
+
+Data Analyst:
+
+* SQL
+* Excel
+* Power BI
+* Tableau
+* Pandas
+* Data Visualization
+* Data Analysis Projects
+* A score above 70 requires evidence of SQL and at least one analytics tool such as Excel, Power BI, Tableau or Pandas.
+
+AI Engineer:
+
+* Machine Learning
+* Deep Learning
+* Python
+* TensorFlow
+* PyTorch
+* NLP
+* Computer Vision
+* Model Development
+Only consider AI Engineer skills if explicitly mentioned in the resume.
+Do not infer AI knowledge from generic software, IoT, automation, or sensor-based projects.
+* A score above 70 requires practical AI/ML project experience and relevant frameworks.
+
+Frontend Developer:
+
+* HTML
+* CSS
+* JavaScript
+* React
+* Angular
+* Vue
+* Frontend Projects
+* A score above 70 requires HTML, CSS, JavaScript and at least one frontend project.
+
+Full Stack Developer:
+
+* Frontend Technologies
+* Backend Development
+* Databases
+* APIs
+* Full Stack Projects
+- A score above 70 should generally require evidence of both frontend and backend skills.
+- Missing frontend technologies (HTML, CSS, JavaScript) should significantly reduce the score.
+- Missing backend development experience should significantly reduce the score.
+- Generic programming skills alone should not result in a high score.
+- Database knowledge alone should not result in a high score.
+
+
+Before generating Strengths:
+
+1. Identify role-relevant skills.
+2. Ignore unrelated skills.
+3. Generate strengths only from relevant skills.
+
+Return ONLY in this format:
+
+Match Score: X%
+
+Strengths:
+
+* Point 1
+* Point 2
+* Point 3
+
+Missing Skills:
+
+* Point 1
+* Point 2
+* Point 3
+
+Improvement Suggestions:
+
+* Point 1
+* Point 2
+* Point 3
+
+Resume:
+
+{resume_text}
+"""
+
+
+
+    role_response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "user",
+                "content": role_match_prompt
+            }
+        ]
+    )
+
+    role_analysis = (
+        role_response
+        .choices[0]
+        .message.content
+        .strip()
+    )
+    
+
+    st.subheader(
+    "🎯 Role Match Analysis"
+)
+
+    st.info(
+    "⚠️ AI-generated analysis may occasionally make assumptions. Use this as guidance and not as a final role assessment."
+    )
+
+    st.write(role_analysis)
     # ==========================
     # GENERATE QUESTIONS
     # ==========================
