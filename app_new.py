@@ -255,33 +255,94 @@ if (
         resume_text,
         height=250
     )
+    # ==========================
+# RESUME VALIDATION
+# ==========================
+
     resume_score_prompt = f"""
-Analyze this resume and give:
+You are an ATS resume checker.
 
-1. Resume Score out of 100
-2. Strengths
-3. Weaknesses
-4. Suggestions
+First determine whether this document is a professional resume.
 
-Resume:
+A resume must contain:
+- Candidate name
+- Education
+- Skills
+- Contact information
 
-{resume_text}
+If this document is NOT a resume,
+return ONLY:
 
-Return EXACTLY:
+NOT A RESUME
 
-Resume Score: 85
+If this document IS a resume,
+return ONLY in the following format:
+
+
+For a fresher resume:
+
+90+ = Exceptional
+80-89 = Strong
+70-79 = Good
+60-69 = Average
+Below 60 = Needs Improvement
+
+Do not give 90+ unless the resume contains:
+- GitHub
+- LinkedIn
+- Internship
+- Achievements
+- Strong projects
+For fresher resumes:
+
+90-100 = Exceptional
+(Must have GitHub, LinkedIn, Internship, Achievements)
+
+80-89 = Strong
+(Most sections present)
+
+70-79 = Good
+(Some sections missing)
+
+60-69 = Average
+(Multiple sections missing)
+
+Below 60 = Weak
+
+
+
+ATS Score: X/100
 
 Strengths:
-- ...
+- Point 1
+- Point 2
 
-Weaknesses:
-- ...
+Missing Sections:
+- Point 1
+- Point 2
 
 Suggestions:
-- ...
+- Point 1
+- Point 2
+
+Important:
+- Do not explain your reasoning.
+- Do not say "I need to check".
+- Do not add extra text.
+- Be strict while scoring.
+- Deduct marks for missing GitHub, LinkedIn, internship experience, achievements, and poor project descriptions.
+-do not add any extra text or explanations.
+Do NOT include scoring rules in the output.
+Do NOT explain the calculation.
+Only return the final ATS Score and analysis.
+
+
+Document:
+
+{resume_text}
 """
     resume_response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+    model="llama-3.1-8b-instant",
         messages=[
         {
             "role": "user",
@@ -289,17 +350,26 @@ Suggestions:
         }
     ]
 )
+    
 
     resume_analysis = (
-                    resume_response
-                    .choices[0]
-                    .message.content
-                )
+    resume_response
+    .choices[0]
+    .message.content
+    .strip()
+)
+
+    if "NOT A RESUME" in resume_analysis:
+
+        st.error(
+        "❌ Uploaded file is not a valid resume."
+    )
+
+        st.stop()
 
     st.subheader("📄 Resume Analysis")
 
     st.write(resume_analysis)
-
     # ==========================
     # GENERATE QUESTIONS
     # ==========================
@@ -586,6 +656,43 @@ Feedback: Good answer with relevant details and strong follow-up response.
                 f"{readiness:.0f}% Ready"
             )
             st.info(f"Type :{interview_type}| Difficulty: {difficulty}")
+            # ==========================
+# HIRING RECOMMENDATION
+# ==========================
+
+            st.subheader(
+                "🏢 Hiring Recommendation"
+            )
+
+            if average_score >= 8:
+
+                st.success(
+             "✅ Recommended"
+            )
+
+                st.write(
+        "Candidate demonstrated strong technical knowledge and communication skills."
+        )
+
+            elif average_score >= 6:
+
+                st.warning(
+                "⚠️ Consider for Further Evaluation"
+                )
+
+                st.write(
+        "Candidate shows potential but needs improvement in some areas."
+                )
+
+            else:
+
+                st.error(
+                "❌ Not Recommended"
+                )
+
+                st.write(
+                "Candidate should strengthen technical concepts and interview performance."
+                )
 
         # ==========================
         # AI FEEDBACK SUMMARY
@@ -661,9 +768,7 @@ Feedback: Good answer with relevant details and strong follow-up response.
         with open(HISTORY_FILE, "r") as f:
             history = json.load(f)
         
-        st.write("Scores:", scores)
-        st.write("Average Score:", average_score)
-
+        
         history.append(
     {
         "date": datetime.now().strftime(
