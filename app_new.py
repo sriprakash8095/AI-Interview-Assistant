@@ -224,18 +224,7 @@ Rules:
          
 if "interview_completed" not in st.session_state:
     st.session_state["interview_completed"] = False
-if st.button("🗑 Clear Previous Interview"):
-    st.session_state["interview_completed"] = False
 
-    if os.path.exists("questions.json"):
-        os.remove("questions.json")
-
-    if os.path.exists("answers.json"):
-        os.remove("answers.json")
-
-    st.success("Previous interview deleted")
-
-    st.rerun()
 
 # ==========================
 # RESUME UPLOAD
