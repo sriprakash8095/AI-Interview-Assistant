@@ -13,6 +13,7 @@ from reportlab.platypus import (
     Paragraph,
     Spacer
 )
+MODEL = "openai/gpt-oss-120b"
 
 from reportlab.lib.styles import getSampleStyleSheet
 import matplotlib.pyplot as plt
@@ -190,7 +191,7 @@ Rules:
 """
 
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=MODEL,
             messages=[
                 {
                     "role": "user",
@@ -257,6 +258,17 @@ if (
     interview_type == "Resume Based"
     and uploaded_file
 ):
+    resume_text = ""
+
+    with pdfplumber.open(uploaded_file) as pdf:
+
+        for page in pdf.pages:
+
+            text = page.extract_text()
+
+            if text:
+
+                resume_text += text + "\n"
     selected_role = st.selectbox(
     "🎯 Target Job Role",
     [
@@ -372,6 +384,13 @@ Strength Rules:
 * Do NOT mention candidate name, education alone, email, phone number or contact information as strengths.
 * Prefer projects, technical skills, certifications and problem-solving ability.
 Only mention strengths directly supported by explicit resume evidence.
+Hard Validation Rules:
+
+- Do not treat "basics", "basic knowledge", "familiarity", or "beginner" skills as strengths.
+- Do not mention problem-solving as a strength unless the resume explicitly states problem-solving achievements, optimization, debugging, measurable outcomes, or competitive coding experience.
+- Completing a project alone is not evidence of problem-solving ability.
+- If fewer than 3 valid strengths exist, return only the strengths supported by evidence.
+- Never create strengths to fill the list.
 
 Do not infer:
 - Leadership
@@ -406,6 +425,11 @@ For Software Developer roles, do not heavily penalize missing advanced industry 
 * Cloud Computing
 * DevOps
 * Microservices
+Software Developer Additional Rules:
+
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 Python Developer:
 
@@ -415,6 +439,11 @@ Python Developer:
 * APIs
 * Python Libraries
 * Problem Solving
+python Developer Additional Rules:
+
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 Java Developer:
 
@@ -425,6 +454,11 @@ Java Developer:
 * Spring
 * Hibernate
 * Java Projects
+Java Developer Additional Rules:
+
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 Data Analyst:
 
@@ -436,6 +470,11 @@ Data Analyst:
 * Data Visualization
 * Data Analysis Projects
 * A score above 70 requires evidence of SQL and at least one analytics tool such as Excel, Power BI, Tableau or Pandas.
+Data Analyst Additional Rules:
+
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 AI Engineer:
 
@@ -461,6 +500,11 @@ Frontend Developer:
 * Vue
 * Frontend Projects
 * A score above 70 requires HTML, CSS, JavaScript and at least one frontend project.
+Frontend Developer Additional Rules:
+
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 Full Stack Developer:
 
@@ -474,7 +518,11 @@ Full Stack Developer:
 - Missing backend development experience should significantly reduce the score.
 - Generic programming skills alone should not result in a high score.
 - Database knowledge alone should not result in a high score.
+Full Stack Developer Additional Rules:
 
+- Do not list IoT, Machine Learning, Deep Learning, Data Analytics, Computer Vision, NLP, TensorFlow, PyTorch, or Embedded Systems as strengths unless they directly contribute to software development experience described in the resume.
+- Missing System Design, Cloud Computing, DevOps, or Microservices must not significantly reduce the score for fresher candidates.
+- Do not include these skills in Missing Skills unless explicitly required by the resume's target profile.
 
 Before generating Strengths:
 
@@ -511,8 +559,8 @@ Resume:
 
 
 
-    role_response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        role_response = client.chat.completions.create(
+        model=MODEL,
         messages=[
             {
                 "role": "user",
@@ -521,35 +569,28 @@ Resume:
         ]
     )
 
-    role_analysis = (
+        role_analysis = (
         role_response
         .choices[0]
         .message.content
         .strip()
     )
+        st.session_state["role_analysis"] = role_analysis
     
 
-    st.subheader(
-    "🎯 Role Match Analysis"
-)
+    if "role_analysis" in st.session_state:
 
-    st.info(
-    "⚠️ AI-generated analysis may occasionally make assumptions. Use this as guidance and not as a final role assessment."
+        st.subheader(
+        "🎯 Role Match Analysis"
+        )
+
+        st.info(
+        "⚠️ AI-generated analysis may occasionally make assumptions. Use this as guidance and not as a final role assessment."
     )
 
-    st.write(role_analysis)
-
-    resume_text = ""
-
-    with pdfplumber.open(uploaded_file) as pdf:
-
-        for page in pdf.pages:
-
-            text = page.extract_text()
-
-            if text:
-
-                resume_text += text + "\n"
+        st.write(
+        st.session_state["role_analysis"]
+    )
     if (
     "last_resume_text" not in st.session_state
     or st.session_state["last_resume_text"] != resume_text 
@@ -648,6 +689,28 @@ Strength Rules:
 - Do NOT consider contact information as strengths.
 - Do NOT consider basic resume sections as strengths.
 - Prioritize projects, technical skills, certifications, internships, achievements and academic performance.
+Do not consider:
+- Being a student
+- Pursuing a degree
+- Academic enrollment
+- Generic academic background
+Hard Validation Rules:
+
+- Do not consider declarations, personal details, nationality, date of birth, address, or personal information as strengths.
+- Do not consider academic enrollment or being a student as a strength.
+- Do not consider CGPA alone as a strength unless accompanied by relevant projects, achievements, certifications, internships, or technical skills.
+- If fewer than 3 valid strengths exist, return only the strengths supported by evidence.
+- Never create strengths to fill the list.
+
+as strengths.
+Output Validation Rules:
+
+- Do not explain the reasoning behind the score.
+- Do not add notes, observations, summaries, or extra paragraphs.
+- Do not write "After analyzing the resume".
+- Do not write "Based on the resume".
+- Do not write "Note:" sections.
+- Return only the requested format.
 
 Return ONLY in this format:
 
@@ -679,7 +742,7 @@ Document:
     if "resume_analysis" not in st.session_state:
 
         resume_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=MODEL,
             messages=[
             {
                 "role": "user",
@@ -759,7 +822,7 @@ Resume:
     """
 
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=MODEL,
             messages=[
                 {
                     "role": "user",
@@ -930,7 +993,7 @@ Score: 8
 Feedback: Good answer with relevant details and strong follow-up response.
 """
             response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model=MODEL,
                 messages=[
                     {
                         "role": "user",
@@ -1071,7 +1134,7 @@ Feedback: Good answer with relevant details and strong follow-up response.
         """
 
         summary_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=MODEL,
             messages=[
                 {
                     "role": "user",
