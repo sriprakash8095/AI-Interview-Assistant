@@ -143,8 +143,11 @@ interview_type = st.selectbox(
         "HR",
         "Python",
         "Java",
-        "Machine Learning",
-        "IoT"
+        "Data Analyst",
+        "AI Engineer",
+        "Frontend Developer",
+        "Full Stack Developer"
+        
     ]
 )
 difficulty = st.selectbox(
