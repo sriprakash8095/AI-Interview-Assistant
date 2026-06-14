@@ -257,183 +257,7 @@ if (
     interview_type == "Resume Based"
     and uploaded_file
 ):
-
-    resume_text = ""
-
-    with pdfplumber.open(uploaded_file) as pdf:
-
-        for page in pdf.pages:
-
-            text = page.extract_text()
-
-            if text:
-
-                resume_text += text + "\n"
-    if (
-    "last_resume_text" not in st.session_state
-    or st.session_state["last_resume_text"] != resume_text 
-    ):
-
-        st.session_state["last_resume_text"] = resume_text
-
-        if "resume_analysis" in st.session_state:
-            del st.session_state["resume_analysis"]
-
-    st.success("✅ Resume Uploaded Successfully")
-
-    st.subheader("Resume Content")
-
-    st.text_area(
-        "Extracted Resume",
-        resume_text,
-        height=250
-    )
-    # ==========================
-# RESUME VALIDATION
-# ==========================
-
-    resume_score_prompt = f"""
-You are an ATS resume checker.
-
-First determine whether this document is a professional resume.
-
-A resume must contain:
-
-* Candidate name
-* Education
-* Skills
-* Contact information
-
-If this document is NOT a resume,
-return ONLY:
-
-NOT A RESUME
-
-If the document IS a valid resume:
-
-Do NOT mention resume validation.
-
-Do NOT say:
-
-* This is a resume
-* I classify this as a resume
-* The document appears to be a resume
-* Based on the document
-* I have evaluated the resume
-
-Evaluate strictly based on:
-
-* Education
-* Technical Skills
-* Projects
-* Certifications
-* Internship Experience
-* Achievements
-* LinkedIn Profile
-* GitHub Profile
-* Resume Structure
-
-Scoring Guidelines:
-
-90-100 = Exceptional
-(Strong projects, GitHub, LinkedIn, internships, achievements)
-
-80-89 = Strong
-(Good projects and skills, but missing one or two important sections)
-
-70-79 = Good
-(Multiple important sections missing)
-
-60-69 = Average
-(Significant gaps in profile)
-
-Below 60 = Needs Improvement
-
-Important Rules:
-
-* Do NOT consider candidate name as a strength.
-* Do NOT consider email as a strength.
-* Do NOT consider phone number as a strength.
-* Do NOT consider address as a strength.
-* Do NOT consider contact information as a strength.
-* Contact details are mandatory resume requirements and should never increase the ATS score.
-* Focus only on professional qualifications and career readiness.
-* Be strict while scoring.
-* Do not assume skills, experience, internships, achievements or certifications that are not explicitly mentioned.
-* If GitHub, LinkedIn, Internship and Achievements are all missing, ATS Score must NOT exceed 75.
-Strength Rules:
-
-- Do NOT consider spoken languages as strengths.
-- Do NOT consider contact information as strengths.
-- Do NOT consider basic resume sections as strengths.
-- Prioritize projects, technical skills, certifications, internships, achievements and academic performance.
-
-Return ONLY in this format:
-
-ATS Score: X/100
-
-Strengths:
-
-* Point 1
-* Point 2
-* Point 3
-
-Missing Sections:
-
-* Point 1
-* Point 2
-* Point 3
-
-Suggestions:
-
-* Point 1
-* Point 2
-* Point 3
-
-Document:
-
-{resume_text}
-"""
-
-    if "resume_analysis" not in st.session_state:
-
-        resume_response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-            {
-                "role": "user",
-                "content": resume_score_prompt
-            }
-        ]
-    )
-
-        st.session_state["resume_analysis"] = (
-            resume_response
-            .choices[0]
-            .message.content
-            .strip()
-        )
-
-    resume_analysis = st.session_state["resume_analysis"]
-
-    if "NOT A RESUME" in resume_analysis:
-
-        st.error(
-        "❌ Uploaded file is not a valid resume."
-    )
-
-        st.stop()
-
-    st.subheader("📄 Resume Analysis")
-
-    st.write(resume_analysis)
-    
-
-    # ==========================
-# ROLE MATCH ANALYSIS
-# ==========================
-
-selected_role = st.selectbox(
+    selected_role = st.selectbox(
     "🎯 Target Job Role",
     [
         "Software Developer",
@@ -446,9 +270,9 @@ selected_role = st.selectbox(
     ]
 )
 
-if st.button("Check Role Match"):
+    if st.button("Check Role Match"):
 
-    role_match_prompt = f"""
+        role_match_prompt = f"""
 You are an experienced technical recruiter.
 
 Analyze this resume ONLY for the role:
@@ -714,6 +538,183 @@ Resume:
     )
 
     st.write(role_analysis)
+
+    resume_text = ""
+
+    with pdfplumber.open(uploaded_file) as pdf:
+
+        for page in pdf.pages:
+
+            text = page.extract_text()
+
+            if text:
+
+                resume_text += text + "\n"
+    if (
+    "last_resume_text" not in st.session_state
+    or st.session_state["last_resume_text"] != resume_text 
+    ):
+
+        st.session_state["last_resume_text"] = resume_text
+
+        if "resume_analysis" in st.session_state:
+            del st.session_state["resume_analysis"]
+
+    st.success("✅ Resume Uploaded Successfully")
+
+    st.subheader("Resume Content")
+
+    st.text_area(
+        "Extracted Resume",
+        resume_text,
+        height=250
+    )
+    # ==========================
+# RESUME VALIDATION
+# ==========================
+
+    resume_score_prompt = f"""
+You are an ATS resume checker.
+
+First determine whether this document is a professional resume.
+
+A resume must contain:
+
+* Candidate name
+* Education
+* Skills
+* Contact information
+
+If this document is NOT a resume,
+return ONLY:
+
+NOT A RESUME
+
+If the document IS a valid resume:
+
+Do NOT mention resume validation.
+
+Do NOT say:
+
+* This is a resume
+* I classify this as a resume
+* The document appears to be a resume
+* Based on the document
+* I have evaluated the resume
+
+Evaluate strictly based on:
+
+* Education
+* Technical Skills
+* Projects
+* Certifications
+* Internship Experience
+* Achievements
+* LinkedIn Profile
+* GitHub Profile
+* Resume Structure
+
+Scoring Guidelines:
+
+90-100 = Exceptional
+(Strong projects, GitHub, LinkedIn, internships, achievements)
+
+80-89 = Strong
+(Good projects and skills, but missing one or two important sections)
+
+70-79 = Good
+(Multiple important sections missing)
+
+60-69 = Average
+(Significant gaps in profile)
+
+Below 60 = Needs Improvement
+
+Important Rules:
+
+* Do NOT consider candidate name as a strength.
+* Do NOT consider email as a strength.
+* Do NOT consider phone number as a strength.
+* Do NOT consider address as a strength.
+* Do NOT consider contact information as a strength.
+* Contact details are mandatory resume requirements and should never increase the ATS score.
+* Focus only on professional qualifications and career readiness.
+* Be strict while scoring.
+* Do not assume skills, experience, internships, achievements or certifications that are not explicitly mentioned.
+* If GitHub, LinkedIn, Internship and Achievements are all missing, ATS Score must NOT exceed 75.
+Strength Rules:
+
+- Do NOT consider spoken languages as strengths.
+- Do NOT consider contact information as strengths.
+- Do NOT consider basic resume sections as strengths.
+- Prioritize projects, technical skills, certifications, internships, achievements and academic performance.
+
+Return ONLY in this format:
+
+ATS Score: X/100
+
+Strengths:
+
+* Point 1
+* Point 2
+* Point 3
+
+Missing Sections:
+
+* Point 1
+* Point 2
+* Point 3
+
+Suggestions:
+
+* Point 1
+* Point 2
+* Point 3
+
+Document:
+
+{resume_text}
+"""
+
+    if "resume_analysis" not in st.session_state:
+
+        resume_response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+            {
+                "role": "user",
+                "content": resume_score_prompt
+            }
+        ]
+    )
+
+        st.session_state["resume_analysis"] = (
+            resume_response
+            .choices[0]
+            .message.content
+            .strip()
+        )
+
+    resume_analysis = st.session_state["resume_analysis"]
+
+    if "NOT A RESUME" in resume_analysis:
+
+        st.error(
+        "❌ Uploaded file is not a valid resume."
+    )
+
+        st.stop()
+
+    st.subheader("📄 Resume Analysis")
+
+    st.write(resume_analysis)
+    
+
+    # ==========================
+# ROLE MATCH ANALYSIS
+# ==========================
+
+
     # ==========================
     # GENERATE QUESTIONS
     # ==========================
@@ -779,12 +780,9 @@ Resume:
 
                 clean_questions.append(line)
 
-        st.session_state.clear()
-
         st.session_state["interview_completed"] = False
 
         st.session_state["questions"] = clean_questions
-
         if os.path.exists("answers.json"):
             os.remove("answers.json")
 
