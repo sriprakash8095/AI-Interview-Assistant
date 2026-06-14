@@ -816,7 +816,9 @@ if "questions" in st.session_state:
         )
 
     if st.button("🎤 Start Voice Interview"):
-
+        st.warning(
+    "🎤 Voice Interview feature will be available in the next web version."
+        )
         subprocess.run(
         ["python", "voice_interview.py"]
         )
@@ -1250,8 +1252,8 @@ else:
         df["difficulty"] == selected_difficulty
     ]
 
-st.dataframe(
-    df[
+    st.dataframe(
+        df[
         [
             "date",
             "type",
